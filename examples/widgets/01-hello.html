@@ -1,0 +1,23 @@
+<!--
+  01-hello: the smallest correct widget.
+  - edge to edge: body margin reset (the client pads body by default)
+  - follows the chat theme through --tg-theme-* variables
+  - keeps the bottom corner free for the message time (safe area)
+  - in normal flow, so the client can measure the content height
+-->
+<style>
+  body { margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+  .card {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+    background: var(--tg-theme-secondary-bg-color, #f1f1f4);
+    color: var(--tg-theme-text-color, #000);
+  }
+  .title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .hint { font-size: 14px; color: var(--tg-theme-hint-color, #8e8e93); }
+</style>
+<div class="card">
+  <div class="title">Hello from a widget</div>
+  <div class="hint">Static HTML + CSS, no script.</div>
+</div>

@@ -1,0 +1,85 @@
+<!--
+  04-poll: widget <-> bot round trip.
+  - the bot sends the widget with allow_queries=true and public_data = {"q","o","v","r"}
+  - a tap calls TelegramWidget.request('vote:N') -> the bot gets a widget_query update
+  - the bot answers with answerWidgetQuery (result) and edits the state with editMessageWidgetData
+  - the widget redraws from the answer and from publicDataChanged; "r" (revision) drops stale states
+  Pair with examples/bot/bot.py (/poll).
+-->
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; }
+  .p {
+    padding: 14px 14px max(14px, env(safe-area-inset-bottom));
+    background: var(--tg-theme-secondary-bg-color, #f1f1f4);
+    color: var(--tg-theme-text-color, #000);
+  }
+  .q { font-weight: 700; font-size: 16px; margin-bottom: 10px; }
+  .o { position: relative; margin-bottom: 8px; border-radius: 10px; overflow: hidden; cursor: pointer;
+       background: rgba(127,127,127,.15); }
+  .bar { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(36,129,204,.35); }
+  .row { position: relative; display: flex; justify-content: space-between; padding: 9px 12px; }
+  .st { font-size: 12px; color: var(--tg-theme-hint-color, #8e8e93); min-height: 16px; }
+</style>
+<div class="p">
+  <div class="q" id="q"></div>
+  <div id="opts"></div>
+  <div class="st" id="st"></div>
+</div>
+<script>
+  var tw = window.TelegramWidget;
+  var state = null;
+
+  function parse(s) { try { return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+
+  // keep only the newest state: polls/answers can arrive out of order
+  function accept(s) {
+    if (!s || !s.o) return;
+    if (state && typeof s.r === 'number' && typeof state.r === 'number' && s.r < state.r) return;
+    state = s;
+    draw();
+  }
+
+  function draw() {
+    document.getElementById('q').textContent = state.q;
+    var total = state.v.reduce(function (a, b) { return a + b; }, 0) || 1;
+    var html = '';
+    state.o.forEach(function (label, i) {
+      var pct = Math.round(state.v[i] * 100 / total);
+      html += '<div class="o" data-i="' + i + '" role="button"><div class="bar" style="width:' + pct + '%"></div>' +
+        '<div class="row"><span></span><span>' + state.v[i] + '</span></div></div>';
+    });
+    var box = document.getElementById('opts');
+    box.innerHTML = html;
+    // set labels via textContent: never inject user text as HTML
+    [].forEach.call(box.querySelectorAll('.row span:first-child'), function (el, i) { el.textContent = state.o[i]; });
+  }
+
+  var MESSAGES = {
+    NOT_ALLOWED: 'Voting is not available here', BUSY: 'One moment…', RATE_LIMITED: 'Too fast, try again',
+    TIMEOUT: 'The bot did not answer', FAILED: 'Something went wrong', INVALID_ANSWER: 'Bad answer from the bot'
+  };
+
+  document.getElementById('opts').addEventListener('click', function (e) {
+    var el = e.target.closest('[data-i]');
+    if (!el || !tw) return;
+    var st = document.getElementById('st');
+    st.textContent = 'Sending…';
+    // must be called inside the tap handler; data is 1–64 bytes
+    tw.request('vote:' + el.getAttribute('data-i')).then(function (a) {
+      var r = parse(a.result);
+      st.textContent = r && r.msg ? r.msg : '';
+      if (r && r.state) accept(r.state);
+    }, function (err) {
+      st.textContent = MESSAGES[err.code] || err.code;
+    });
+  });
+
+  if (tw) {
+    accept(parse(tw.publicData));
+    if (!state) document.getElementById('st').textContent = 'No poll data (send with public_data)';
+    tw.onEvent('publicDataChanged', function () { accept(parse(tw.publicData)); });
+    tw.ready();
+  } else {
+    accept({ q: 'Preview outside Telegram', o: ['A', 'B'], v: [1, 2], r: 0 });
+  }
+</script>

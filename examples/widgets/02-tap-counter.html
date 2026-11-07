@@ -1,0 +1,51 @@
+<!--
+  02-tap-counter: interaction with plain JS.
+  - click handler via addEventListener (taps are always delivered to the widget)
+  - localStorage keeps the value per message, per device (4 KB per area)
+  - TelegramWidget is undefined in a regular browser: always guard it
+  - a styled div with role="button" instead of <button> renders the same on every client
+-->
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; }
+  .box {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+    background: var(--tg-theme-secondary-bg-color, #f1f1f4);
+    color: var(--tg-theme-text-color, #000);
+  }
+  .n { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .btn {
+    padding: 10px 18px; border-radius: 12px; font-weight: 600; cursor: pointer;
+    background: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #fff);
+  }
+  .btn:active { transform: scale(.96); }
+</style>
+<div class="box">
+  <div class="n" id="n">0</div>
+  <div class="btn" id="inc" role="button">Tap +1</div>
+</div>
+<script>
+  var KEY = 'count';
+  var tw = window.TelegramWidget;
+  var out = document.getElementById('n');
+
+  function load() {
+    try { return Number(localStorage.getItem(KEY)) || 0; } catch (e) { return 0; }
+  }
+  function save(v) {
+    try { localStorage.setItem(KEY, String(v)); } catch (e) { /* quota or no storage */ }
+  }
+
+  var count = load();
+  out.textContent = count;
+
+  document.getElementById('inc').addEventListener('click', function () {
+    count += 1;
+    out.textContent = count;
+    save(count);
+    if (tw && tw.HapticFeedback) tw.HapticFeedback.impactOccurred('light');
+  });
+
+  if (tw) tw.ready();
+</script>

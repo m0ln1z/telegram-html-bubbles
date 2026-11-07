@@ -1,0 +1,54 @@
+<!--
+  03-animation-paint-safe: many animated elements without hitting the paint limit.
+
+  The renderer allows at most 16 "heavy" boxes at once. A box is heavy when it has
+  opacity < 1 (0 included), any filter / backdrop-filter, a box-shadow with blur,
+  or a running animation of opacity / filter / blurred box-shadow.
+  Past 16 the widget is stopped ("Paint limit exceeded") and looks blank/frozen.
+
+  This file animates 40 dots with transform only and fakes transparency with rgba(),
+  so the heavy count stays at 0.
+-->
+<style>
+  body { margin: 0; }
+  .stage {
+    position: relative; width: 100%; height: 220px; overflow: hidden;
+    background: radial-gradient(circle at 50% 40%, #233a6b, #0d1428);
+  }
+  /* fixed-width scene centred inside a bubble of any width */
+  .scene { position: absolute; left: 50%; top: 0; width: 320px; height: 220px; margin-left: -160px; }
+  .dot {
+    position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(160, 200, 255, .7);          /* transparency via colour: free */
+    transform: scale(0);
+    animation: tw 2.4s ease-in-out infinite;      /* transform only: free */
+  }
+  .orb {
+    position: absolute; left: 110px; top: 60px; width: 100px; height: 100px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #9fd0ff, #2f6fd6);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  /* glow without filter/box-shadow: a gradient that fades to transparent */
+  .glow {
+    position: absolute; left: 60px; top: 10px; width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(120,180,255,.45), rgba(120,180,255,0) 65%);
+  }
+  @keyframes tw { 0%, 100% { transform: scale(0); } 50% { transform: scale(1); } }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  @media (prefers-reduced-motion: reduce) { .dot, .orb { animation: none; transform: none; } }
+</style>
+<div class="stage"><div class="scene" id="scene">
+  <div class="glow"></div>
+  <div class="orb"></div>
+</div></div>
+<script>
+  // deterministic pseudo-random layout (no Math.random flicker between re-creations)
+  var seed = 7;
+  function rnd() { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+  var html = '';
+  for (var i = 0; i < 40; i++) {
+    html += '<div class="dot" style="left:' + Math.round(rnd() * 310) + 'px;top:' + Math.round(rnd() * 210) +
+      'px;animation-delay:' + (rnd() * 2.4).toFixed(2) + 's"></div>';
+  }
+  document.getElementById('scene').insertAdjacentHTML('afterbegin', html);
+</script>
